@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Test</title>
+</head>
+<body>
+    <h1>與陌生人聊天</h1>
+    <ul id="messages"></ul>
+    <input id="messageInput" autocomplete="off" placeholder="輸入訊息..." />
+    <button id="sendButton">傳送</button>
+    <button id="leaveButton">離開</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        const messages = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const status = document.createElement('p');
+        const leaveButton = document.getElementById('leaveButton'); // 取得離開按鈕元素
+        document.body.insertBefore(status, messages);
+
+        // 接收配對狀態
+        socket.on('waiting', (msg) => {
+            status.textContent = msg; // 顯示等待中訊息
+        });
+
+        socket.on('matched', (msg) => {
+            status.textContent = msg; // 顯示配對成功訊息
+        });
+
+        // 發送訊息
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value;
+
+            // 顯示自己的訊息
+            const item = document.createElement('li');
+            item.textContent = `${message}`;
+            item.style.color = 'blue'; // 自己的訊息顯示藍色
+            messages.appendChild(item);
+
+            // 發送訊息到伺服器
+            socket.emit('chat message', message);
+            messageInput.value = '';
+        });
+
+        // 接收訊息
+        socket.on('chat message', (msg) => {
+            const item = document.createElement('li');
+            item.textContent = msg;
+            messages.appendChild(item);
+        });
+
+        // 接收 Enter 鍵發送訊息的功能
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // 阻止換行動作
+                sendMessage(); // 呼叫發送訊息的函式
+            }
+        });
+
+        // 發送按鈕的功能
+        sendButton.addEventListener('click', () => {
+            sendMessage();
+        });
+
+        // 發送訊息的核心功能
+        function sendMessage() {
+            const message = messageInput.value;
+
+            if (message.trim() === '') return; // 不發送空白訊息
+
+            // 顯示自己的訊息
+            const item = document.createElement('li');
+            item.textContent = `${message}`;
+            item.style.color = 'blue';
+            messages.appendChild(item);
+
+            // 發送訊息到伺服器
+            socket.emit('chat message', message);
+            messageInput.value = ''; // 清空輸入框
+        }
+
+        // 處理離開按鈕
+        leaveButton.addEventListener('click', () => {
+            const confirmLeave = confirm('確定要離開嗎?'); // 確認視窗
+            if (confirmLeave) {
+                socket.emit('leave chat'); // 通知伺服器離開
+                messages.innerHTML = ''; // 清空訊息列表
+                status.textContent = '您已離開，請重新整理頁面加入配對。'; // 顯示離開訊息
+                messageInput.disabled = true; // 禁用輸入框
+                sendButton.disabled = true; // 禁用發送按鈕
+                leaveButton.disabled = true; // 禁用離開按鈕
+            }
+        });
+
+        socket.on('partner left', () => {
+            const item = document.createElement('li');
+            item.textContent = '對方已離開，請重新整理頁面加入配對。';
+            item.style.color = 'red'; // 顯示紅色提示
+            messages.appendChild(item);
+
+            messageInput.disabled = true; // 禁用輸入框
+            sendButton.disabled = true; // 禁用發送按鈕
+            leaveButton.disabled = true; // 禁用離開按鈕
+        });
+
+
+
+
+    </script>
+</body>
+</html>
